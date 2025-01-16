@@ -1,0 +1,12 @@
+__pycache__
+.idea
+.vscode
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pth
+dataset/*
+.DS_Store
+*.pdf
