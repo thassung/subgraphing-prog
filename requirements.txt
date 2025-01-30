@@ -3,4 +3,6 @@ numpy
 pandas
 scikit-learn
 scipy
-
+torch
+torch-sparse
+torch-geometric
