@@ -12,7 +12,7 @@ class RandomWalkSubgraph:
         """Get k-hop neighbors of given nodes"""
         adj = SparseTensor.from_edge_index(edge_index, sparse_sizes=(num_nodes, num_nodes))
         
-        # Initialize masks
+        # Masking the nodes
         mask = torch.zeros(num_nodes, dtype=torch.bool, device=edge_index.device)
         mask[node_idx] = True
         
