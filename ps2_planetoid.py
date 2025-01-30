@@ -12,6 +12,7 @@ from utils import do_edge_split, evaluate_auc, IndexLoader
 from torch_geometric.utils import to_undirected, add_self_loops, negative_sampling
 import numpy as np
 import json
+from subgraph_extraction.multicom.multicom import approximate_ppr
 
 
 def _concat(xs):
@@ -472,6 +473,51 @@ def test_model(model, v_model, arch_net, data, split_edge, batch_size):
 
     results = evaluate_auc(train_pred, train_true, val_pred, val_true, test_pred, test_true)
     return results
+
+
+def get_optimal_hops(model, v_model, arch_net, data, edge, device):
+    """
+    Get optimal h1, h2 values for a given edge
+    """
+    model.eval()
+    v_model.eval()
+    arch_net.eval()
+    
+    with torch.no_grad():
+        h = v_model(data.x, data.edge_index)
+        
+        arch_scores = v_model.compute_arch_input(h, arch_net, edge.to(device))
+        
+        num_hops = int(arch_scores.size(0) ** 0.5)
+        scores_matrix = arch_scores.view(num_hops, num_hops)
+        
+        max_idx = scores_matrix.argmax().item()
+        h1 = max_idx // num_hops
+        h2 = max_idx % num_hops
+    return h1, h2
+
+def ppr_with_learned_hops(data, edge, model, v_model, arch_net, alpha=0.85, epsilon=1e-3):
+    """
+    Run PPR using learned hop values as initial weights
+    """
+    h1, h2 = get_optimal_hops(model, v_model, arch_net, data, edge, data.x.device)
+    
+    source, target = edge[0], edge[1]
+    
+    seed_weights = {
+        source.item(): h1 / (h1 + h2),  
+        target.item(): h2 / (h1 + h2)   
+    }
+    
+    ppr_scores = approximate_ppr(
+        data.edge_index, 
+        seed_set=list(seed_weights.keys()),
+        alpha=alpha,
+        epsilon=epsilon,
+        initial_weights=seed_weights
+    )
+    
+    return ppr_scores
 
 
 def main(data, args, device):
